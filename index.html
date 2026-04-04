@@ -3,21 +3,85 @@
 <head>
   <title>Inventory Search</title>
   <style>
-    body { font-family: Arial; padding: 20px; }
-    input { padding: 10px; width: 300px; margin-bottom: 20px; }
-    .card {
-      border: 1px solid #ddd;
-      padding: 10px;
-      margin-bottom: 10px;
+    body {
+      font-family: Arial;
+      padding: 30px;
+      background: #f5f7fa;
+    }
+
+    h2 {
+      text-align: center;
+    }
+
+    .search-box {
+      text-align: center;
+      position: relative;
+    }
+
+    input {
+      padding: 12px;
+      width: 350px;
       border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+
+    .suggestions {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 350px;
+      background: white;
+      border: 1px solid #ddd;
+      border-top: none;
+      max-height: 150px;
+      overflow-y: auto;
+      z-index: 10;
+    }
+
+    .suggestions div {
+      padding: 10px;
+      cursor: pointer;
+    }
+
+    .suggestions div:hover {
+      background: #f0f0f0;
+    }
+
+    #results {
+      margin-top: 30px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 10px;
+      padding: 15px;
+      margin: 10px auto;
+      width: 350px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .title {
+      font-size: 18px;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .no-result {
+      text-align: center;
+      color: red;
+      margin-top: 20px;
     }
   </style>
 </head>
 <body>
 
-<h2>Search Item</h2>
+<h2>🔍 Inventory Search</h2>
 
-<input type="text" id="search" placeholder="Enter item name...">
+<div class="search-box">
+  <input type="text" id="search" placeholder="Enter item name...">
+  <div id="suggestions" class="suggestions"></div>
+</div>
 
 <div id="results"></div>
 
@@ -37,32 +101,64 @@ function display(data) {
   container.innerHTML = "";
 
   if (data.length === 0) {
-    container.innerHTML = "<p>No item found</p>";
+    container.innerHTML = "<p class='no-result'>No item found</p>";
     return;
   }
 
   data.forEach(item => {
     const div = document.createElement("div");
     div.className = "card";
+
     div.innerHTML = `
-      <b>${item["ITEM NAME"]}</b><br>
-      Price: ${item["RATE"]}<br>
-      Dollar Rate: ${item["DOLLAR"]}<br>
-      RMB: ${item["RMB"]}<br>
-      Updated: ${item["DATE UPDATED"]}
+      <div class="title">${item["ITEM NAME"] || "N/A"}</div>
+      Rate: ${item["RATE"] || "-"}<br>
+      Dollar: ${item["DOLLAR"] || "-"}<br>
+      RMB: ${item["RMB"] || "-"}<br>
+      Updated: ${item["DATE UPDATED"] || "-"}
     `;
+
     container.appendChild(div);
   });
 }
 
+// 🔍 Search + Suggestions
 document.getElementById("search").addEventListener("input", function(e) {
   const value = e.target.value.toLowerCase();
+  const suggestionBox = document.getElementById("suggestions");
+  suggestionBox.innerHTML = "";
 
- const filtered = allData.filter(item =>
-  item["ITEM NAME"].toLowerCase().includes(value)
-);
+  if (!value) {
+    display(allData);
+    return;
+  }
+
+  const filtered = allData.filter(item =>
+    item["ITEM NAME"] &&
+    item["ITEM NAME"].toLowerCase().includes(value)
+  );
 
   display(filtered);
+
+  // Suggestions
+  filtered.slice(0, 5).forEach(item => {
+    const div = document.createElement("div");
+    div.textContent = item["ITEM NAME"];
+
+    div.onclick = () => {
+      document.getElementById("search").value = item["ITEM NAME"];
+      suggestionBox.innerHTML = "";
+      display([item]);
+    };
+
+    suggestionBox.appendChild(div);
+  });
+});
+
+// Hide suggestions when clicking outside
+document.addEventListener("click", function(e) {
+  if (!e.target.closest(".search-box")) {
+    document.getElementById("suggestions").innerHTML = "";
+  }
 });
 
 fetchData();
