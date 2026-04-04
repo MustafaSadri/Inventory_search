@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Inventory Search</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    input { padding: 10px; width: 300px; margin-bottom: 20px; }
+    .card {
+      border: 1px solid #ddd;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Search Item</h2>
+
+<input type="text" id="search" placeholder="Enter item name...">
+
+<div id="results"></div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbxy3YRCi0Zw-1z5joUIXY-SuoPbl0Izp24IkvoG3Ui7zE2UPPNZXrlZTGVU4fv_2SI5ag/exec";
+
+let allData = [];
+
+async function fetchData() {
+  const res = await fetch(API_URL);
+  allData = await res.json();
+  display(allData);
+}
+
+function display(data) {
+  const container = document.getElementById("results");
+  container.innerHTML = "";
+
+  if (data.length === 0) {
+    container.innerHTML = "<p>No item found</p>";
+    return;
+  }
+
+  data.forEach(item => {
+    const div = document.createElement("div");
+    div.className = "card";
+    div.innerHTML = `
+      <b>${item["ITEM NAME"]}</b><br>
+      Price: ${item["RATE"]}<br>
+      Dollar Rate: ${item["DOLLAR"]}<br>
+      RMB: ${item["RMB"]}<br>
+      Updated: ${item["DATE UPDATED"]}
+    `;
+    container.appendChild(div);
+  });
+}
+
+document.getElementById("search").addEventListener("input", function(e) {
+  const value = e.target.value.toLowerCase();
+
+ const filtered = allData.filter(item =>
+  item["ITEM NAME"].toLowerCase().includes(value)
+);
+
+  display(filtered);
+});
+
+fetchData();
+</script>
+
+</body>
+</html>
