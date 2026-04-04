@@ -1,301 +1,10 @@
-<!-- <!DOCTYPE html>
-<html>
-<head>
-  <title>Smart Inventory Search</title>
-  <style>
-    body {
-      font-family: Arial;
-      padding: 20px;
-      background: #f5f6fa;
-    }
-
-    h2 {
-      color: #333;
-    }
-
-    input {
-      padding: 12px;
-      width: 320px;
-      border: 2px solid #333;
-      border-radius: 6px;
-      font-size: 16px;
-    }
-
-    .suggestions {
-      border: 1px solid #ccc;
-      max-width: 320px;
-      background: #fff;
-      border-radius: 6px;
-      margin-top: 5px;
-    }
-
-    .suggestions div {
-      padding: 10px;
-      cursor: pointer;
-    }
-
-    .suggestions div:hover {
-      background: #f0f0f0;
-    }
-
-    .card {
-      background: #fff;
-      border-radius: 10px;
-      padding: 15px;
-      margin-top: 15px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-    }
-
-    .error {
-      color: red;
-      margin-top: 10px;
-    }
-
-    .loading {
-      color: blue;
-      margin-top: 10px;
-    }
-  </style>
-</head>
-<body>
-
-<h2>🔍 Smart Inventory Search</h2>
-
-<input type="text" id="searchBox" placeholder="Search item..." />
-
-<div id="loading" class="loading">⏳ Loading data...</div>
-<div id="error" class="error"></div>
-<div id="suggestions" class="suggestions"></div>
-<div id="results"></div>
-
 <script>
-  // 🔥 USE PROXY (avoids CORS issues)
-  const API_URL = "https://api.allorigins.win/raw?url=" + encodeURIComponent("https://script.google.com/macros/s/AKfycbxy3YRCi0Zw-1z5joUIXY-SuoPbl0Izp24IkvoG3Ui7zE2UPPNZXrlZTGVU4fv_2SI5ag/exec");
+  const API_URL = "https://script.google.com/macros/s/AKfycbwraLzyh0kW-7gmHjWCgeAbyVCX4HqihytVMi2YWHjXDlbUI50TUvAktYqNp7lwkz-VZQ/exec";
 
   let data = [];
   let debounceTimer;
 
-  // ✅ Fetch Data
-  async function fetchData() {
-    try {
-      const res = await fetch(API_URL);
-
-      if (!res.ok) throw new Error("HTTP error: " + res.status);
-
-      const text = await res.text();
-
-      try {
-        data = JSON.parse(text);
-      } catch {
-        throw new Error("Invalid JSON (Check Apps Script)");
-      }
-
-      if (!Array.isArray(data)) {
-        throw new Error("Data is not array");
-      }
-
-      console.log("✅ Data Loaded:", data);
-      document.getElementById("loading").innerText = "✅ Data Loaded";
-
-    } catch (err) {
-      console.error(err);
-      document.getElementById("error").innerText = "❌ ERROR: " + err.message;
-      document.getElementById("loading").innerText = "Failed to load data";
-    }
-  }
-
-  fetchData();
-
-  // ✅ Debounce Search
-  document.getElementById("searchBox").addEventListener("input", () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(handleSearch, 300);
-  });
-
-  // ✅ Safe item name getter
-  function getItemName(item) {
-    return (
-      item["ITEM NAME"] ||
-      item["Item Name"] ||
-      item["item name"] ||
-      ""
-    ).toLowerCase();
-  }
-
-  // ✅ Highlight match
-  function highlight(text, query) {
-    if (!text) return "";
-    const regex = new RegExp(`(${query})`, "gi");
-    return text.replace(regex, "<b style='color:blue'>$1</b>");
-  }
-
-  function handleSearch() {
-    const query = document.getElementById("searchBox").value.toLowerCase();
-
-    const suggestionsBox = document.getElementById("suggestions");
-    const resultsBox = document.getElementById("results");
-
-    suggestionsBox.innerHTML = "";
-    resultsBox.innerHTML = "";
-
-    if (!query) return;
-
-    if (data.length === 0) {
-      document.getElementById("error").innerText = "⚠️ Data not loaded yet";
-      return;
-    }
-
-    document.getElementById("error").innerText = "";
-
-    resultsBox.innerHTML = "⏳ Searching...";
-
-    const filtered = data.filter(item =>
-      getItemName(item).includes(query)
-    );
-
-    console.log("Filtered:", filtered);
-
-    if (filtered.length === 0) {
-      resultsBox.innerHTML = `
-        <div style="color:red; margin-top:10px;">
-          ❌ No items found for "${query}"
-        </div>
-      `;
-      return;
-    }
-
-    // Suggestions
-    filtered.slice(0, 5).forEach(item => {
-      const div = document.createElement("div");
-      div.innerHTML = highlight(item["ITEM NAME"] || "Unknown", query);
-      div.onclick = () => selectItem(item);
-      suggestionsBox.appendChild(div);
-    });
-
-    // Results
-    resultsBox.innerHTML = "";
-
-    filtered.forEach(item => {
-      const card = document.createElement("div");
-      card.className = "card";
-
-      card.innerHTML = `
-        <strong>${item["ITEM NAME"] || "-"}</strong><br><br>
-        💰 RATE: ${item["RATE"] || "-"}<br>
-        💵 DOLLAR: ${item["DOLLAR"] || "-"}<br>
-        🇨🇳 RMB: ${item["RMB"] || "-"}<br>
-        📅 DATE: ${item["DATE UPDATED"] || "-"}
-      `;
-
-      resultsBox.appendChild(card);
-    });
-  }
-
-  function selectItem(item) {
-    document.getElementById("searchBox").value = item["ITEM NAME"];
-    document.getElementById("suggestions").innerHTML = "";
-
-    const resultsBox = document.getElementById("results");
-
-    resultsBox.innerHTML = `
-      <div class="card">
-        <strong>${item["ITEM NAME"] || "-"}</strong><br><br>
-        💰 RATE: ${item["RATE"] || "-"}<br>
-        💵 DOLLAR: ${item["DOLLAR"] || "-"}<br>
-         ¥  RMB: ${item["RMB"] || "-"}<br>
-        📅 DATE: ${item["DATE UPDATED"] || "-"}
-      </div>
-    `;
-  }
-</script>
-
-</body>
-</html> -->
-
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Smart Inventory Search</title>
-  <style>
-    body {
-      font-family: Arial;
-      padding: 20px;
-      background: #f5f6fa;
-    }
-
-    h2 { color: #333; }
-
-    input {
-      padding: 12px;
-      width: 320px;
-      border: 2px solid #333;
-      border-radius: 6px;
-      font-size: 16px;
-    }
-
-    button {
-      padding: 10px 15px;
-      margin-left: 10px;
-      cursor: pointer;
-      border-radius: 6px;
-      border: none;
-      background: #333;
-      color: white;
-    }
-
-    .suggestions {
-      border: 1px solid #ccc;
-      max-width: 320px;
-      background: #fff;
-      border-radius: 6px;
-      margin-top: 5px;
-    }
-
-    .suggestions div {
-      padding: 10px;
-      cursor: pointer;
-    }
-
-    .suggestions div:hover {
-      background: #f0f0f0;
-    }
-
-    .card {
-      background: #fff;
-      border-radius: 10px;
-      padding: 15px;
-      margin-top: 15px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-    }
-
-    .error { color: red; margin-top: 10px; }
-    .loading { color: blue; margin-top: 10px; }
-  </style>
-</head>
-<body>
-
-<h2>🔍 Smart Inventory Search</h2>
-
-<input type="text" id="searchBox" placeholder="Search item..." />
-<button onclick="fetchData()">🔄 Refresh</button>
-
-<div id="loading" class="loading">⏳ Loading data...</div>
-<div id="error" class="error"></div>
-<div id="suggestions" class="suggestions"></div>
-<div id="results"></div>
-
-<script>
-  const BASE_URL = "https://script.google.com/macros/s/AKfycbxy3YRCi0Zw-1z5joUIXY-SuoPbl0Izp24IkvoG3Ui7zE2UPPNZXrlZTGVU4fv_2SI5ag/exec";
-
-  function getApiUrl() {
-    return "https://api.allorigins.win/raw?url=" + 
-      encodeURIComponent(BASE_URL + "?t=" + new Date().getTime());
-  }
-
-  let data = [];
-  let debounceTimer;
-
-  // ✅ FETCH WITH RETRY + NO CACHE
+  // ✅ FETCH (NO PROXY, DIRECT, STABLE)
   async function fetchData(retries = 3) {
     const loadingEl = document.getElementById("loading");
     const errorEl = document.getElementById("error");
@@ -304,20 +13,13 @@
       loadingEl.innerText = "⏳ Loading data...";
       errorEl.innerText = "";
 
-      const res = await fetch(getApiUrl(), {
+      const res = await fetch(API_URL + "?t=" + new Date().getTime(), {
         cache: "no-store"
       });
 
       if (!res.ok) throw new Error("HTTP error: " + res.status);
 
-      const text = await res.text();
-
-      let json;
-      try {
-        json = JSON.parse(text);
-      } catch {
-        throw new Error("Invalid JSON response");
-      }
+      const json = await res.json();
 
       if (!Array.isArray(json)) {
         throw new Error("Data is not array");
@@ -343,7 +45,7 @@
 
   fetchData();
 
-  // 🔄 Auto refresh every 10 sec
+  // 🔄 Auto refresh
   setInterval(fetchData, 10000);
 
   // ✅ Debounce Search
@@ -438,6 +140,3 @@
     `;
   }
 </script>
-
-</body>
-</html>
