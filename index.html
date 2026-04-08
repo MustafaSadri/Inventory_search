@@ -1,227 +1,8 @@
-<!-- 
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Smart Inventory Search</title>
-  <style>
-    body {
-      font-family: Arial;
-      padding: 20px;
-      background: #f5f6fa;
-    }
-
-    h2 { color: #333; }
-
-    input {
-      padding: 12px;
-      width: 320px;
-      border: 2px solid #333;
-      border-radius: 6px;
-      font-size: 16px;
-    }
-
-    button {
-      padding: 10px 15px;
-      margin-left: 10px;
-      cursor: pointer;
-      border-radius: 6px;
-      border: none;
-      background: #333;
-      color: white;
-    }
-
-    .suggestions {
-      border: 1px solid #ccc;
-      max-width: 320px;
-      background: #fff;
-      border-radius: 6px;
-      margin-top: 5px;
-    }
-
-    .suggestions div {
-      padding: 10px;
-      cursor: pointer;
-    }
-
-    .suggestions div:hover {
-      background: #f0f0f0;
-    }
-
-    .card {
-      background: #fff;
-      border-radius: 10px;
-      padding: 15px;
-      margin-top: 15px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-    }
-
-    .error { color: red; margin-top: 10px; }
-    .loading { color: blue; margin-top: 10px; }
-  </style>
-</head>
-<body>
-
-<h2>🔍 Smart Inventory Search</h2>
-
-<input type="text" id="searchBox" placeholder="Search item..." />
-<button onclick="fetchData()">🔄 Refresh</button>
-
-<div id="loading" class="loading">⏳ Loading data...</div>
-<div id="error" class="error"></div>
-<div id="suggestions" class="suggestions"></div>
-<div id="results"></div>
-
-<script>
-  const API_URL = "https://script.google.com/macros/s/AKfycbwraLzyh0kW-7gmHjWCgeAbyVCX4HqihytVMi2YWHjXDlbUI50TUvAktYqNp7lwkz-VZQ/exec";
-
-  let data = [];
-  let debounceTimer;
-
-  // ✅ FETCH (NO PROXY, DIRECT, STABLE)
-  async function fetchData(retries = 3) {
-    const loadingEl = document.getElementById("loading");
-    const errorEl = document.getElementById("error");
-
-    try {
-      loadingEl.innerText = "⏳ Loading data...";
-      errorEl.innerText = "";
-
-      const res = await fetch(API_URL + "?t=" + new Date().getTime(), {
-        cache: "no-store"
-      });
-
-      if (!res.ok) throw new Error("HTTP error: " + res.status);
-
-      const json = await res.json();
-
-      if (!Array.isArray(json)) {
-        throw new Error("Data is not array");
-      }
-
-      data = json;
-
-      console.log("✅ Fresh Data Loaded:", data);
-      loadingEl.innerText = "✅ Data Loaded";
-
-    } catch (err) {
-      console.error("Fetch error:", err);
-
-      if (retries > 0) {
-        loadingEl.innerText = `🔄 Retrying... (${retries})`;
-        setTimeout(() => fetchData(retries - 1), 1500);
-      } else {
-        loadingEl.innerText = "❌ Failed to load data";
-        errorEl.innerText = "Error: " + err.message;
-      }
-    }
-  }
-
-  fetchData();
-
-  // 🔄 Auto refresh
-  setInterval(fetchData, 10000);
-
-  // ✅ Debounce Search
-  document.getElementById("searchBox").addEventListener("input", () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(handleSearch, 300);
-  });
-
-  function getItemName(item) {
-    return (
-      item["ITEM NAME"] ||
-      item["Item Name"] ||
-      ""
-    ).toLowerCase();
-  }
-
-  function highlight(text, query) {
-    const regex = new RegExp(`(${query})`, "gi");
-    return text.replace(regex, "<b style='color:blue'>$1</b>");
-  }
-
-  function handleSearch() {
-    const query = document.getElementById("searchBox").value.toLowerCase();
-
-    const suggestionsBox = document.getElementById("suggestions");
-    const resultsBox = document.getElementById("results");
-
-    suggestionsBox.innerHTML = "";
-    resultsBox.innerHTML = "";
-
-    if (!query) return;
-
-    if (!data || data.length === 0) {
-      document.getElementById("error").innerText = "⚠️ Data not ready yet";
-      return;
-    }
-
-    resultsBox.innerHTML = "⏳ Searching...";
-
-    const filtered = data.filter(item =>
-      getItemName(item).includes(query)
-    );
-
-    if (filtered.length === 0) {
-      resultsBox.innerHTML = `
-        <div style="color:red;">❌ No items found for "${query}"</div>
-      `;
-      return;
-    }
-
-    // Suggestions
-    filtered.slice(0, 5).forEach(item => {
-      const div = document.createElement("div");
-      div.innerHTML = highlight(item["ITEM NAME"] || "Unknown", query);
-      div.onclick = () => selectItem(item);
-      suggestionsBox.appendChild(div);
-    });
-
-    // Results
-    resultsBox.innerHTML = "";
-
-    filtered.forEach(item => {
-      const card = document.createElement("div");
-      card.className = "card";
-
-      card.innerHTML = `
-        <strong>${item["ITEM NAME"] || "-"}</strong><br><br>
-        💰 RATE: ${item["RATE"] || "-"}<br>
-        💵 DOLLAR: ${item["DOLLAR"] || "-"}<br>
-        🇨🇳 RMB: ${item["RMB"] || "-"}<br>
-        📅 DATE: ${item["DATE UPDATED"] || "-"}
-      `;
-
-      resultsBox.appendChild(card);
-    });
-  }
-
-  function selectItem(item) {
-    document.getElementById("searchBox").value = item["ITEM NAME"];
-    document.getElementById("suggestions").innerHTML = "";
-
-    const resultsBox = document.getElementById("results");
-
-    resultsBox.innerHTML = `
-      <div class="card">
-        <strong>${item["ITEM NAME"] || "-"}</strong><br><br>
-        💰 RATE: ${item["RATE"] || "-"}<br>
-        💵 DOLLAR: ${item["DOLLAR"] || "-"}<br>
-        🇨🇳 RMB: ${item["RMB"] || "-"}<br>
-        📅 DATE: ${item["DATE UPDATED"] || "-"}
-      </div>
-    `;
-  }
-</script>
-
-</body>
-</html> -->
 <!DOCTYPE html>
 <html>
 <head>
   <title>Smart Inventory Search</title>
 
-  <!-- ✅ Mobile scaling -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <style>
@@ -238,7 +19,15 @@
       font-size: 20px;
     }
 
-    /* 🔍 Search container */
+    select {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      border: 2px solid #333;
+      font-size: 16px;
+    }
+
     .search-container {
       display: flex;
       flex-direction: column;
@@ -252,7 +41,6 @@
       border: 2px solid #333;
       border-radius: 8px;
       font-size: 16px;
-      box-sizing: border-box;
     }
 
     button {
@@ -266,13 +54,10 @@
       font-size: 16px;
     }
 
-    /* Suggestions */
     .suggestions {
-      width: 100%;
       background: #fff;
       border-radius: 8px;
       margin-top: 5px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
       max-height: 200px;
       overflow-y: auto;
     }
@@ -286,28 +71,39 @@
     .suggestions div:hover {
       background: #f0f0f0;
     }
+    .row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid #eee;
+  font-size: 15px;
+}
 
-    /* Cards */
+.row:last-child {
+  border-bottom: none;
+}
+
+.row span:first-child {
+  font-weight: 600;
+  color: #555;
+}
+
+.row span:last-child {
+  font-weight: 500;
+  color: #000;
+}
+
     .card {
       background: #fff;
       border-radius: 12px;
       padding: 14px;
       margin-top: 10px;
       box-shadow: 0 3px 8px rgba(0,0,0,0.08);
-      font-size: 14px;
-      line-height: 1.5;
     }
 
-    .card strong {
-      font-size: 16px;
-      display: block;
-      margin-bottom: 5px;
-    }
+    .loading { color: blue; text-align: center; }
+    .error { color: red; }
 
-    .error { color: red; margin-top: 10px; }
-    .loading { color: blue; margin-top: 10px; text-align: center; }
-
-    /* 💻 Desktop optimization */
     @media (min-width: 768px) {
       body {
         max-width: 600px;
@@ -318,20 +114,21 @@
         flex-direction: row;
       }
 
-      input {
-        width: 70%;
-      }
-
-      button {
-        width: 30%;
-      }
+      input { width: 70%; }
+      button { width: 30%; }
     }
   </style>
 </head>
 
 <body>
 
-<h2>🔍 Smart Inventory Search</h2>
+<h2>🔍Price List Search</h2>
+
+<!-- ✅ SHEET SWITCH -->
+<select id="sheetSelector">
+  <option value="CARGO" selected>🚚 Cargo</option>
+  <option value="CONTAINER">📦 Container</option>
+</select>
 
 <div class="search-container">
   <input type="text" id="searchBox" placeholder="Search item..." />
@@ -343,9 +140,9 @@
 <div id="suggestions" class="suggestions"></div>
 <div id="results"></div>
 
-<!-- ✅ JS UNCHANGED -->
 <script>
-  const API_URL = "https://script.google.com/macros/s/AKfycbwraLzyh0kW-7gmHjWCgeAbyVCX4HqihytVMi2YWHjXDlbUI50TUvAktYqNp7lwkz-VZQ/exec";
+  // 🔥 PASTE YOUR NEW DEPLOYED URL HERE
+  const BASE_URL = "https://script.google.com/macros/s/AKfycbzWZoAWyiQ3yP2z50-0TXUI6uxULosXjaawIADDDvtegq1voXfzmRiPpbVncRmGvmkQlg/exec";
 
   let data = [];
   let debounceTimer;
@@ -353,43 +150,50 @@
   async function fetchData(retries = 3) {
     const loadingEl = document.getElementById("loading");
     const errorEl = document.getElementById("error");
+    const selectedSheet = document.getElementById("sheetSelector").value;
 
     try {
-      loadingEl.innerText = "⏳ Loading data...";
+      loadingEl.innerText = `⏳ Loading ${selectedSheet} data...`;
       errorEl.innerText = "";
 
-      const res = await fetch(API_URL + "?t=" + new Date().getTime(), {
-        cache: "no-store"
-      });
+      const res = await fetch(
+        BASE_URL + "?sheet=" + selectedSheet + "&t=" + new Date().getTime(),
+        { cache: "no-store" }
+      );
 
       if (!res.ok) throw new Error("HTTP error: " + res.status);
 
       const json = await res.json();
 
       if (!Array.isArray(json)) {
-        throw new Error("Data is not array");
+        throw new Error("Invalid data format");
       }
 
       data = json;
-
-      console.log("✅ Fresh Data Loaded:", data);
-      loadingEl.innerText = "✅ Data Loaded";
+      loadingEl.innerText = `✅ ${selectedSheet} Data Loaded`;
 
     } catch (err) {
-      console.error("Fetch error:", err);
-
       if (retries > 0) {
         loadingEl.innerText = `🔄 Retrying... (${retries})`;
         setTimeout(() => fetchData(retries - 1), 1500);
       } else {
         loadingEl.innerText = "❌ Failed to load data";
-        errorEl.innerText = "Error: " + err.message;
+        errorEl.innerText = err.message;
       }
     }
   }
 
+  // auto load
   fetchData();
   setInterval(fetchData, 10000);
+
+  // 🔥 change sheet
+  document.getElementById("sheetSelector").addEventListener("change", () => {
+    data = [];
+    document.getElementById("results").innerHTML = "";
+    document.getElementById("suggestions").innerHTML = "";
+    fetchData();
+  });
 
   document.getElementById("searchBox").addEventListener("input", () => {
     clearTimeout(debounceTimer);
@@ -425,16 +229,12 @@
       return;
     }
 
-    resultsBox.innerHTML = "⏳ Searching...";
-
     const filtered = data.filter(item =>
       getItemName(item).includes(query)
     );
 
     if (filtered.length === 0) {
-      resultsBox.innerHTML = `
-        <div style="color:red;">❌ No items found for "${query}"</div>
-      `;
+      resultsBox.innerHTML = `❌ No items found`;
       return;
     }
 
@@ -445,43 +245,55 @@
       suggestionsBox.appendChild(div);
     });
 
-    resultsBox.innerHTML = "";
-
     filtered.forEach(item => {
       const card = document.createElement("div");
       card.className = "card";
 
-      card.innerHTML = `
-        <strong>${item["ITEM NAME"] || "-"}</strong><br><br>
-        💰 RATE: ${item["RATE"] || "-"}<br>
-        💵 DOLLAR: ${item["DOLLAR"] || "-"}<br>
-        🇨🇳 RMB: ${item["RMB"] || "-"}<br>
-        📅 DATE: ${item["DATE UPDATED"] || "-"}
-      `;
+     card.innerHTML = `
+  <div class="card">
+    <strong style="font-size:18px;">${item["ITEM NAME"] || "-"}</strong>
 
+    <div class="row"><span>₽ Rate</span><span>${item["RATE"] || "-"}</span></div>
+    <div class="row"><span>💵 Dollar</span><span>${item["DOLLAR"] || "-"}</span></div>
+    <div class="row"><span>¥ RMB</span><span>${item["RMB"] || "-"}</span></div>
+    <div class="row"><span>📅 Date</span><span>${item["DATE UPDATED"] || "-"}</span></div>
+  </div>
+`;
       resultsBox.appendChild(card);
     });
   }
 
   function selectItem(item) {
-    document.getElementById("searchBox").value = item["ITEM NAME"];
-    document.getElementById("suggestions").innerHTML = "";
+  document.getElementById("searchBox").value = item["ITEM NAME"];
+  document.getElementById("suggestions").innerHTML = "";
 
-    const resultsBox = document.getElementById("results");
+  document.getElementById("results").innerHTML = `
+    <div class="card">
+      <strong style="font-size:18px;">${item["ITEM NAME"] || "-"}</strong>
 
-    resultsBox.innerHTML = `
-      <div class="card">
-        <strong>${item["ITEM NAME"] || "-"}</strong><br><br>
-        💰 RATE: ${item["RATE"] || "-"}<br>
-        💵 DOLLAR: ${item["DOLLAR"] || "-"}<br>
-        🇨🇳 RMB: ${item["RMB"] || "-"}<br>
-        📅 DATE: ${item["DATE UPDATED"] || "-"}
+      <div class="row">
+        <span>₽ Rate</span>
+        <span>${item["RATE"] || "-"}</span>
       </div>
-    `;
-  }
+
+      <div class="row">
+        <span>💵 Dollar</span>
+        <span>${item["DOLLAR"] || "-"}</span>
+      </div>
+
+      <div class="row">
+        <span>¥ RMB</span>
+        <span>${item["RMB"] || "-"}</span>
+      </div>
+
+      <div class="row">
+        <span>📅 Date</span>
+        <span>${item["DATE UPDATED"] || item["DATE"] || "-"}</span>
+      </div>
+    </div>
+  `;
+}
 </script>
 
 </body>
 </html>
-
-
